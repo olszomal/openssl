@@ -107,13 +107,7 @@ int OSSL_parse_url(const char *url, char **pscheme, char **puser, char **phost,
         p = ++host_end;
     } else {
         /* look for start of optional port, path, query, or fragment */
-        host_end = strchr(host, ':');
-        if (host_end == NULL)
-            host_end = strchr(host, '/');
-        if (host_end == NULL)
-            host_end = strchr(host, '?');
-        if (host_end == NULL)
-            host_end = strchr(host, '#');
+        host_end = strpbrk(host, ":/?#");
         if (host_end == NULL) /* the remaining string is just the hostname */
             host_end = host + strlen(host);
         p = host_end;
@@ -121,13 +115,24 @@ int OSSL_parse_url(const char *url, char **pscheme, char **puser, char **phost,
 
     /* parse optional port specification starting with ':' */
     port = "0"; /* default */
-    if (*p == ':')
+    if (*p == ':') {
         port = ++p;
-    /* remaining port spec handling is also done for the default values */
-    /* make sure a decimal port number is given */
-    if (sscanf(port, "%u", &portnum) <= 0 || portnum > 65535) {
-        ERR_raise_data(ERR_LIB_HTTP, HTTP_R_INVALID_PORT_NUMBER, "%s", port);
-        goto err;
+        /* remaining port spec handling is also done for the default values */
+        /* make sure a decimal port number is given */
+        if (sscanf(port, "%u", &portnum) != 1 || portnum > 65535) {
+            ERR_raise_data(ERR_LIB_HTTP, HTTP_R_INVALID_PORT_NUMBER, "%s", port);
+            goto parse_err;
+        }
+    } else {
+        if (scheme) {
+            if (memcmp(scheme, "https", 5) == 0) {
+                port = "443";
+                portnum = 443;
+            } else if (memcmp(scheme, "http", 4) == 0) {
+                port = "80";
+                portnum = 80;
+            }
+        }
     }
     for (port_end = port; '0' <= *port_end && *port_end <= '9'; port_end++)
         ;
