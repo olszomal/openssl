@@ -14,8 +14,6 @@ use OpenSSL::Test::Utils;
 
 setup("test_verify_store");
 
-plan skip_all => "DH is not supported in this build"
-    if disabled("dh");
 plan tests => 11;
 
 my $dummycnf = srctop_file("apps", "openssl.cnf");
@@ -77,8 +75,12 @@ SKIP: {
     open(my $out, '>', $CAobjects) or die $!;
     my $pubkey = qx(openssl x509 -pubkey -noout -in $CAcert);
     print $out $pubkey;
-    my $params = srctop_file("test", "certs", "dhp2048.pem");
-    print $out do { local @ARGV = ($params, $CAkey, $CAcert); <> };
+    my @files;
+    unless (disabled("dh")) {
+        push @files, srctop_file("test", "certs", "dhp2048.pem");
+    }
+    push @files, ($CAkey, $CAcert);
+    print $out do { local @ARGV = @files; <> };
     close $out or die $!;
 
     skip 'failure', 4 unless
