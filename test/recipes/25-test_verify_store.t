@@ -14,6 +14,8 @@ use OpenSSL::Test::Utils;
 
 setup("test_verify_store");
 
+plan skip_all => "DH is not supported in this build"
+    if disabled("dh");
 plan tests => 11;
 
 my $dummycnf = srctop_file("apps", "openssl.cnf");
